@@ -112,7 +112,7 @@ if query and arxiv_keyword:
     with st.spinner("arXivから論文取得中..."):
         papers = fetch_arxiv_papers(
             query=arxiv_keyword,
-            max_results=100,
+            max_results=1000,
             date_from=date_from,
             date_to=date_to
         )

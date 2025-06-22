@@ -11,7 +11,7 @@ tokenizer = Tokenizer()
 
 
 # Wikipediaから関連語を取得する関数
-def get_wikipedia_related_words(query, lang='ja', top_k=10):
+def get_wikipedia_related_words(query, lang='ja', top_k=20):
     wiki_wiki = wikipediaapi.Wikipedia(language=lang, user_agent='arxiv-search-app/1.0')
     page = wiki_wiki.page(query)
 
@@ -77,7 +77,7 @@ def get_dynamic_related_words(base_word, all_words, top_k=20):
 
 
 # arXiv APIから論文を取得する関数
-def fetch_arxiv_papers(query="transformer", max_results=100, date_from=None, date_to=None):
+def fetch_arxiv_papers(query="transformer", max_results=1000, date_from=None, date_to=None):
     import urllib.parse
     base_url = "http://export.arxiv.org/api/query?"
 
