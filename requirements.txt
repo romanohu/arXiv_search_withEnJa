@@ -1,0 +1,6 @@
+streamlit
+sentence-transformers
+janome
+feedparser
+wikipedia-api
+numpy
