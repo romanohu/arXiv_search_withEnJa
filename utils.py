@@ -61,10 +61,10 @@ def get_dynamic_related_words(base_word, all_words, top_k=20):
     sorted_indices = np.argsort(scores)[::-1][:top_k]
     return [all_words[i] for i in sorted_indices]
 
-def fetch_arxiv_papers(query="transformer", max_results=500, sort_order="descending", date_from=None, date_to=None):
+def fetch_arxiv_papers(query="transformer", max_results=100, date_from=None, date_to=None):
     base_url = "http://export.arxiv.org/api/query?"
     query = query.replace(" ", "+")
-    url = f"{base_url}search_query=all:{query}&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder={sort_order}"
+    url = f"{base_url}search_query=all:{query}&start=0&max_results={max_results}&sortBy=submittedDate"
     feed = feedparser.parse(url)
     papers = []
     for entry in feed.entries:

@@ -12,6 +12,8 @@ from utils import (
     get_model
 )
 
+
+
 model = get_model()
 
 st.title("arXiv論文検索")
@@ -49,8 +51,16 @@ with col2:
     date_to = st.date_input("📅 取得終了日", value=datetime.date.today())
 
 sort_type = st.radio("並び替えの基準", options=["スコア順", "発行日順"], index=0)
-sort_order = st.radio("発行日の並び順を選択してください", options=["新しい順（降順）", "古い順（昇順）"], index=0)
-user_wants_desc = "降順" in sort_order
+sort_order = st.radio("並び順を選択してください", options=["新しい順（降順）", "古い順（昇順）"], index=0)
+
+if sort_type == "スコア順":
+    # スコア順の場合、降順なら高い順、昇順なら低い順
+    reverse_sort = "降順" in sort_order
+    sort_key = "score"
+else:
+    # 発行日順の場合、降順なら新しい順、昇順なら古い順
+    reverse_sort = "降順" in sort_order
+    sort_key = "published_dt"
 
 
 if query and arxiv_keyword:
@@ -82,8 +92,7 @@ if query and arxiv_keyword:
     with st.spinner("arXivから論文取得中..."):
         papers = fetch_arxiv_papers(
             query=arxiv_keyword,
-            max_results=500,
-            sort_order="descending",
+            max_results=100,
             date_from=date_from,
             date_to=date_to
         )
@@ -102,12 +111,12 @@ if query and arxiv_keyword:
             with st.spinner("🔄 スコア計算中..."):
                 paper_vecs = encode_papers(papers)
                 scores = util.cos_sim(query_vec, paper_vecs)[0].cpu().numpy()
-                papers = [p | {"score": scores[i]} for i, p in enumerate(papers) if scores[i] >= 0.2]
+                papers = [p | {"score": scores[i]} for i, p in enumerate(papers)]
 
-            if sort_type == "スコア順":
-                papers = sorted(papers, key=lambda x: x["score"], reverse=True)
+            if sort_key == "score":
+                papers = sorted(papers, key=lambda x: x["score"], reverse=reverse_sort)
             else:
-                papers = sorted(papers, key=lambda x: x["published_dt"], reverse=user_wants_desc)
+                papers = sorted(papers, key=lambda x: x["published_dt"], reverse=reverse_sort)
 
             results_per_page = 10
             total_results = len(papers)
@@ -118,10 +127,11 @@ if query and arxiv_keyword:
 
             st.subheader(f"📄 検索結果（ページ {selected_page} / {total_pages}）")
             for idx, p in enumerate(papers[start_idx:end_idx], start=start_idx + 1):
-                st.markdown(f"### {idx}. [{p['title']}]({p['link']})")
+                st.write(f"{idx}. [{p['title']}]({p['link']})")
                 st.write(f"**Authors**: {', '.join(p['authors'])}")
                 st.write(f"**Published**: {p['published']}")
                 st.write(f"**Similarity**: `{p['score']:.4f}`")
-                st.progress(min(int(p['score'] * 100), 100))
+                progress_value = min(max(int(p['score'] * 100), 0), 100)  # 0～100にクリップ
+                st.progress(progress_value)
                 with st.expander("📖 要約を表示"):
                     st.write(p["summary"])
