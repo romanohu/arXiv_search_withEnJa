@@ -11,23 +11,50 @@ model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2', device='cpu
 tokenizer = Tokenizer()
 
 def get_wikipedia_related_words(query, lang='ja', top_k=10):
-    wiki_wiki = wikipediaapi.Wikipedia(language=lang, user_agent='arxiv-search-app/1.0 (yourname@example.com)')
+    wiki_wiki = wikipediaapi.Wikipedia(language=lang, user_agent='arxiv-search-app/1.0')
     page = wiki_wiki.page(query)
     if not page.exists():
         return []
-    links = list(page.links.keys())
-    return links[:top_k]
+
+    # 通常のリンク一覧（ページ全体から）
+    normal_links = list(page.links.keys())
+
+    # 「関連項目」セクション内のテキストを再帰的に探す
+    def get_related_section_text(section, target_title="関連項目"):
+        if section.title == target_title:
+            return section.text
+        for subsection in section.sections:
+            result = get_related_section_text(subsection, target_title)
+            if result:
+                return result
+        return None
+
+    related_text = get_related_section_text(page)
+    print(f"Related section text: {related_text}")
+
+
+    if related_text:
+        related_words = set(related_text.replace('\n', ' ').split())
+        print(f"Related words extracted: {related_words}")
+        all_links = list(dict.fromkeys(normal_links + list(related_words)))
+    else:
+        all_links = normal_links
+
+    return all_links
 
 def extract_keywords(text):
     keywords = []
+    seen = set()
     for token in tokenizer.tokenize(text):
         base = token.base_form
         part = token.part_of_speech.split(',')[0]
-        if part in ['名詞', '動詞', '形容詞'] and base != '*':
+        # 入力textと同じ語も追加しない
+        if part in ['名詞', '動詞', '形容詞'] and base != '*' and base not in seen and base != text:
             keywords.append(base)
+            seen.add(base)
     return keywords
 
-def get_dynamic_related_words(base_word, all_words, top_k=5):
+def get_dynamic_related_words(base_word, all_words, top_k=20):
     base_vec = model.encode(base_word, convert_to_tensor=True)
     all_vecs = model.encode(all_words, convert_to_tensor=True)
     scores = util.cos_sim(base_vec, all_vecs)[0].cpu().numpy()

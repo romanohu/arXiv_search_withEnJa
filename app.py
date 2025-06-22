@@ -68,8 +68,12 @@ if query and arxiv_keyword:
 
     selected = []
     if candidates:
-        st.write("💡 関連語の候補を選んでください:")
-        selected = [word for word in candidates if st.checkbox(word)]
+        if candidates:
+            st.write("💡 関連語の候補を選んでください:")
+            cols = st.columns(2)
+            for i, word in enumerate(candidates):
+                if cols[i % 2].checkbox(word):
+                    selected.append(word)
 
     final_query = " ".join(keywords + selected)
     st.markdown(f"**拡張後クエリ:** `{final_query}`")
