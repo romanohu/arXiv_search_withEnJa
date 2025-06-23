@@ -13,14 +13,31 @@ tokenizer = Tokenizer()
 # Wikipediaから関連語を取得する関数
 def get_wikipedia_related_words(query, lang='ja', top_k=20):
     wiki_wiki = wikipediaapi.Wikipedia(language=lang, user_agent='arxiv-search-app/1.0')
-    page = wiki_wiki.page(query)
 
-    # ページが存在しない場合は空リストを返す
-    if not page.exists():
+    # クエリが複数単語の場合は、各単語でもWikipediaページを探索
+    # まず元のクエリで検索
+    pages = []
+    page = wiki_wiki.page(query)
+    if page.exists():
+        pages.append(page)
+    else:
+        # Janomeで分割して各単語でページを探索
+        tokenizer = Tokenizer()
+        tokens = [token.base_form for token in tokenizer.tokenize(query)
+                  if token.part_of_speech.split(',')[0] in ['名詞', '動詞', '形容詞']
+                  and token.base_form != '*']
+        for token in tokens:
+            p = wiki_wiki.page(token)
+            if p.exists():
+                pages.append(p)
+
+    if not pages:
         return []
 
     # ページ内リンク（すべての内部リンク）を取得
-    normal_links = list(page.links.keys())
+    normal_links = []
+    for p in pages:
+        normal_links.extend(list(p.links.keys()))
 
     # 「関連項目」セクションに限定して単語を取得する再帰関数
     def get_related_section_text(section, target_title="関連項目"):
@@ -33,17 +50,21 @@ def get_wikipedia_related_words(query, lang='ja', top_k=20):
         return None
 
     # 「関連項目」セクションのテキストを抽出
-    related_text = get_related_section_text(page)
-    print(f"Related section text: {related_text}")
+    related_texts = []
+    for p in pages:
+        related_text = get_related_section_text(p)
+        if related_text:
+            related_texts.append(related_text)
+    print(f"Related section texts: {related_texts}")
 
     # 関連語をテキストから抽出（改行を空白にし、単語分割）
-    if related_text:
-        related_words = set(related_text.replace('\n', ' ').split())
-        print(f"Related words extracted: {related_words}")
-        # 通常リンクと関連項目語を統合し重複排除
-        all_links = list(dict.fromkeys(normal_links + list(related_words)))
-    else:
-        all_links = normal_links
+    related_words = set()
+    for related_text in related_texts:
+        related_words.update(related_text.replace('\n', ' ').split())
+    print(f"Related words extracted: {related_words}")
+
+    # 通常リンクと関連項目語を統合し重複排除
+    all_links = list(dict.fromkeys(normal_links + list(related_words)))
 
     return all_links
 
