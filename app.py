@@ -13,6 +13,10 @@ from utils import (
     get_model
 )
 
+st.set_page_config(
+    page_title="arXiv日本語検索"
+    )
+
 # 埋め込みモデルの読み込み
 model = get_model()
 
